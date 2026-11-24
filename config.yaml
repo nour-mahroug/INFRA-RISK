@@ -1,0 +1,47 @@
+project:
+  name: INFRA-RISK Tunisia
+  mode: production
+aoi:
+  bbox: [10.10, 36.74, 10.34, 36.86] # west, south, east, north
+dates:
+  start: "2022-01-01"
+  end: "2025-06-30"
+insar:
+  orbit_direction: ASCENDING
+  max_scenes: 30
+  max_pairs: 60
+  coherence_threshold: 0.35
+  reference_point: "Stable urban reference candidate; verify in production"
+  demo_seed: 42
+  demo_points: 1800
+assets:
+  buffer_m: 40
+  network_timeout: 30
+  keep_types: [bridge, road_primary, road_secondary, road_trunk, hospital, school, port]
+  max_osm_assets: 4000
+anomaly:
+  robust_z_threshold: 2.5
+  mad_scale: 1.4826
+  isolation_contamination: 0.1
+  random_state: 42
+risk:
+  weights:
+    velocity: 0.35
+    anomaly: 0.30
+    importance: 0.20
+    quality: 0.15
+  importance:
+    bridge: 1.0
+    port: 1.0
+    hospital: 0.9
+    school: 0.9
+    road_trunk: 0.8
+    road_primary: 0.8
+    road_secondary: 0.6
+paths:
+  raw: data/raw
+  processed: data/processed
+  outputs: outputs
+  velocity_raster: data/processed/velocity_real.tif
+  alerts: outputs/real/alerts.geojson
+  map: outputs/real/map.html

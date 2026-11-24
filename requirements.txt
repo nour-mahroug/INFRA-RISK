@@ -1,0 +1,17 @@
+osmnx
+geopandas
+rasterio
+scikit-learn
+pandas
+numpy
+folium
+fastapi
+uvicorn[standard]
+pydantic
+PyYAML
+pytest
+matplotlib
+shapely
+pyproj
+python-dotenv
+httpx

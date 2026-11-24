@@ -1,0 +1,27 @@
+# secrets
+.env
+
+# python
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+*.log
+.DS_Store
+
+# caches and big downloads
+cache/
+*.zip
+data/processed/hyp3_extract/
+data/raw/*
+!data/raw/.gitkeep
+
+# processed data: keep only the final real raster
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/velocity_real.tif
+
+# outputs: keep the real results, ignore the rest
+outputs/*
+!outputs/.gitkeep
+!outputs/real/

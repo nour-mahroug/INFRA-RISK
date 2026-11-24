@@ -1,0 +1,16 @@
+services:
+  infra-risk:
+    build: .
+    container_name: infra-risk-tunisia
+    ports:
+      - "8000:8000"
+    environment:
+      ASF_USERNAME: ${ASF_USERNAME:-}
+      ASF_PASSWORD: ${ASF_PASSWORD:-}
+      HYP3_API_KEY: ${HYP3_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+    command: >
+      sh -c "python -m src.pipeline --config config.yaml --demo &&
+             uvicorn src.api:app --host 0.0.0.0 --port 8000"

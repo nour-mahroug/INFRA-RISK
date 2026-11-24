@@ -16,6 +16,7 @@ insar:
   demo_points: 1800
 assets:
   buffer_m: 40
+  min_samples: 3
   network_timeout: 30
   keep_types: [bridge, road_primary, road_secondary, road_trunk, hospital, school, port]
   max_osm_assets: 4000

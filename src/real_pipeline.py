@@ -33,6 +33,8 @@ def load_real_points(raster_path: str | Path) -> tuple[gpd.GeoDataFrame, dict]:
         if not str(tags.get("SOURCE", "")).startswith("Sentinel-1"):
             raise SystemExit(f"{raster_path} is not tagged as Sentinel-1 data; refusing to label it as real.")
         velocity = src.read(1, masked=True)
+        velocity = velocity - np.ma.median(velocity)   # assume most of the area is stable
+        velocity = np.ma.masked_where(np.abs(velocity) > 50, velocity)   # drop likely unwrapping errors
         coherence = src.read(2, masked=True)
         rows, cols = np.nonzero(~np.ma.getmaskarray(velocity))
         xs, ys = xy(src.transform, rows, cols, offset="center")
@@ -56,9 +58,9 @@ def run_real(config_path: str, raster: str, out_dir: str) -> gpd.GeoDataFrame:
     # Pixels are ~80 m apart, so use a buffer large enough to reach the nearest valid pixel.
     buffer_m = max(int(cfg["assets"]["buffer_m"]), 60)
     associated = associate_assets(assets, points, buffer_m)
-    measured = associated[associated["sample_count"] > 0].copy()
-    LOG.info("%d of %d assets have at least one reliable pixel; the others are not reported.",
-             len(measured), len(associated))
+    measured = associated[associated["sample_count"] >= int(cfg["assets"].get("min_samples", 3))].copy()
+    LOG.info("%d of %d assets have >= %d reliable pixels and are ranked; the rest are reported as insufficient data.",
+             len(measured), len(associated), int(cfg["assets"].get("min_samples", 3)))
     if measured.empty:
         raise SystemExit("No asset has a reliable measurement. Check the velocity map and coherence threshold.")
     radius = float(cfg["anomaly"].get("neighbourhood_m", 1500))
@@ -100,7 +102,7 @@ def screen_area(cfg: dict, bbox: list[float], raster: str) -> dict:
                     "end": tags.get("OBS_END", cfg["dates"]["end"])}
     assets = _clean_names(extract_osm_assets(cfg, demo=False))
     associated = associate_assets(assets, points, max(int(cfg["assets"]["buffer_m"]), 60))
-    measured = associated[associated["sample_count"] > 0].copy()
+    measured = associated[associated["sample_count"] >= int(cfg["assets"].get("min_samples", 3))].copy()
     if measured.empty:
         raise SystemExit("No asset in this area has a reliable measurement.")
     radius = float(cfg["anomaly"].get("neighbourhood_m", 1500))

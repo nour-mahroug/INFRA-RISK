@@ -10,8 +10,16 @@ RED, ORANGE, GREEN = "#d73027", "#fc8d32", "#1a9850"
 TOP_N = 20
 
 
+def _rel_column(frame: gpd.GeoDataFrame) -> str | None:
+    """Name of the neighbourhood-relative velocity column, if any."""
+    for name in ("velocity_rel", "velocity_rel_mm_yr"):
+        if name in frame.columns:
+            return name
+    return None
+
+
 def _color(row, rank: int, total: int) -> str:
-    """Red = consensus anomaly, orange = risk score >= 55, green = the rest (from score_assets)."""
+    """Red = consensus anomaly (high), orange = medium, green = the rest (from score_assets)."""
     priority = row.get("priority")
     if priority is not None:
         return {"high": RED, "medium": ORANGE}.get(str(priority), GREEN)
@@ -29,9 +37,10 @@ def _fmt(value, digits: int = 1) -> str:
 def _table_html(frame: gpd.GeoDataFrame) -> str:
     if "rank" not in frame.columns:
         return ""
+    rel_col = _rel_column(frame)
     rows = []
     for _, r in frame.sort_values("rank").head(TOP_N).iterrows():
-        rel = _fmt(r["velocity_rel"]) if "velocity_rel" in frame.columns else "n/a"
+        rel = _fmt(r[rel_col]) if rel_col else "n/a"
         rows.append(
             f"<tr><td>{int(r['rank'])}</td><td>{html.escape(str(r['name']))}</td>"
             f"<td>{html.escape(str(r['type']))}</td><td>{_fmt(r.get('velocity_mean'))}</td>"
@@ -48,9 +57,10 @@ def _table_html(frame: gpd.GeoDataFrame) -> str:
         "vs. area = velocity minus the median of the surrounding 1.5 km.</div></div>")
 
 
-def create_map(frame: gpd.GeoDataFrame, cfg: dict, output_path: str | Path | None = None) -> str:
+def create_map(frame: gpd.GeoDataFrame, cfg: dict, output_path: str | Path | None = None,
+               meta: dict | None = None) -> str:
     west, south, east, north = cfg["aoi"]["bbox"]
-    center = [(south+north)/2, (west+east)/2]
+    center = [(south + north) / 2, (west + east) / 2]
     fmap = folium.Map(
         location=center,
         zoom_start=12,
@@ -58,7 +68,7 @@ def create_map(frame: gpd.GeoDataFrame, cfg: dict, output_path: str | Path | Non
         attr="Tiles © Esri",
     )
     total = len(frame)
-    has_rel = "velocity_rel" in frame.columns
+    rel_col = _rel_column(frame)
     # Draw the lowest-priority assets first so the red (high priority) markers end up on top.
     ordered = frame.sort_values("rank", ascending=False) if "rank" in frame.columns else frame
     for _, row in ordered.iterrows():
@@ -69,13 +79,15 @@ def create_map(frame: gpd.GeoDataFrame, cfg: dict, output_path: str | Path | Non
         rank = int(row.get("rank", total))
         color = _color(row, rank, total)
         name = html.escape(str(row["name"]))
+        priority = html.escape(str(row.get("priority", "n/a")))
         popup = folium.Popup(
             f"<b>{name}</b><br>Type: {html.escape(str(row['type']))}<br>"
-            f"LOS velocity: {row.get('velocity_mean', 0):.2f} mm/yr<br>"
-            + (f"Relative to surroundings: {row['velocity_rel']:.2f} mm/yr<br>" if has_rel else "")
-            + f"Risk score: {row.get('risk_score', 0):.1f}/100<br>"
-            f"Rank: {rank}<br>Window: {cfg['dates']['start']} → {cfg['dates']['end']}<br>"
-            f"Consensus anomaly: {bool(row.get('is_anomaly', False))}<br>"
+            f"LOS velocity: {_fmt(row.get('velocity_mean'), 2)} mm/yr<br>"
+            + (f"Relative to surroundings: {_fmt(row[rel_col], 2)} mm/yr<br>" if rel_col else "")
+            + f"Risk score: {_fmt(row.get('risk_score'))}/100<br>"
+            f"Rank: {rank} (priority: {priority})<br>"
+            f"Radar pixels: {_fmt(row.get('sample_count'), 0)}<br>"
+            f"Window: {cfg['dates']['start']} → {cfg['dates']['end']}<br>"
             "Source: Sentinel-1 / ASF HyP3 / stacking (LOS)",
             max_width=320)
         folium.CircleMarker([point.y, point.x], radius=7, color=color, fill=True,
@@ -91,9 +103,15 @@ def create_map(frame: gpd.GeoDataFrame, cfg: dict, output_path: str | Path | Non
     fmap.get_root().html.add_child(folium.Element(legend))
     fmap.get_root().html.add_child(folium.Element(_table_html(frame)))
     banner = "Screening only — not a structural diagnosis or failure prediction"
+    if meta and meta.get("coverage_note"):
+        banner += ("<br><span style='font-weight:normal;font-size:12px'>"
+                   f"{html.escape(meta['coverage_note'])}<br>"
+                   f"Real Sentinel-1 data: {html.escape(str(meta.get('obs_start')))} → "
+                   f"{html.escape(str(meta.get('obs_end')))}, {html.escape(str(meta.get('n_pairs')))} pairs. "
+                   "Preliminary results.</span>")
     fmap.get_root().html.add_child(folium.Element(
         f'<div style="position:fixed;top:10px;left:50px;z-index:9999;background:#fff;padding:8px;'
-        f'border:1px solid #777;font-weight:bold">{banner}</div>'))
+        f'border:1px solid #777;font-weight:bold;max-width:480px">{banner}</div>'))
     path = Path(output_path or cfg["paths"]["map"])
     path.parent.mkdir(parents=True, exist_ok=True)
     fmap.save(str(path))

@@ -109,7 +109,7 @@ def run_real(config_path: str, raster: str, out_dir: str) -> gpd.GeoDataFrame:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     build_alerts(scored, cfg, output_path=out / "alerts.geojson", source=SOURCE_TAG, extra_metadata=meta)
-    create_map(scored, cfg, output_path=out / "map.html")
+    create_map(scored, cfg, output_path=out / "map.html", meta=meta)
     scored.drop(columns="geometry").to_csv(out / "ranked_assets.csv", index=False)
     LOG.info("Real-data outputs written to %s", out)
     return scored

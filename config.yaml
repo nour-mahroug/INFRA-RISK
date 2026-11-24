@@ -11,11 +11,11 @@ insar:
   max_scenes: 30
   max_pairs: 60
   coherence_threshold: 0.35
-  reference_point: "Stable urban reference candidate; verify in production"
+  reference_point: "auto: most coherent 2% of pixels, then re-referenced to the area median"
   demo_seed: 42
   demo_points: 1800
 assets:
-  buffer_m: 40
+  buffer_m: 60
   min_samples: 3
   network_timeout: 30
   keep_types: [bridge, road_primary, road_secondary, road_trunk, hospital, school, port]

@@ -1,12 +1,17 @@
-# Assumed limitations and responsible interpretation
+# Limitations and responsible interpretation
 
-1. **LOS-only measurement.** Sentinel-1 InSAR measures displacement projected onto the satellite line of sight. A single orbit/direction cannot independently resolve vertical and horizontal components. Positive/negative sign depends on the processing convention.
-2. **Atmospheric noise.** Water-vapor delay, residual orbit errors, and reference-point choice can introduce apparent motion. A stable reference point must be selected and documented for production.
-3. **Decorrelation over vegetation.** Vegetated, agricultural, water, or rapidly changing surfaces may have low coherence. The pipeline should suppress or mark low-quality pixels rather than imply precision.
-4. **Indicative asset attribution.** A pixel or buffer near an OSM feature is not proof that the bridge, road, hospital, or school itself is deforming. Resolution, geometry accuracy, and nearby ground movement affect attribution.
-5. **Prioritization, not prediction.** Risk score is a screening index for ordering follow-up inspection. It is not a probability of failure, remaining useful life, diagnosis, or prediction of when a structure will collapse.
-6. **Demo mode is synthetic.** The seeded velocity raster and demo asset inventory are generated for reproducible software demonstration. They must not be used for public safety decisions or represented as satellite observations.
-7. **Algorithmic limitations.** Robust Z-score and Isolation Forest identify statistical outliers, not engineering damage. Consensus reduces single-model false positives but does not constitute ground truth.
-8. **OSM completeness.** OpenStreetMap coverage and naming are uneven. Missing or misclassified assets may not appear in the output.
+1. **Preliminary data window.** The current result uses 21 interferogram pairs from 2024-07-09 to 2025-06-04 (about 11 months). Velocities in mm/yr are preliminary: seasonal effects (groundwater, soil moisture, atmosphere) can look like movement.
+2. **Line-of-sight only.** InSAR measures motion along the satellite line of sight. One orbit and direction (ascending) cannot separate vertical from horizontal motion. Sign convention: positive = toward the satellite. We do not call anything "uplift" or "subsidence" without confirmation.
+3. **Reference assumption.** The velocity map is re-referenced to the area median, which assumes most of Greater Tunis is stable. This is an assumption, not a proven fact. A residual atmospheric or orbit ramp can remain.
+4. **Outlier masking.** Pixels with |v| above 50 mm/yr after re-referencing are masked as likely phase-unwrapping errors. This threshold is a judgment call.
+5. **Coverage.** Only 712 of 2,231 OpenStreetMap assets have at least 3 radar pixels and are ranked. Short bridges and assets in vegetated or low-coherence areas are reported as "insufficient data", never as "safe".
+6. **Indicative asset attribution.** Pixels are about 80 m apart. A pixel near an OSM feature does not prove that the bridge, road, school or hospital itself moves. The matching buffer is at least 60 m. Long assets (for example a road) are averaged, which hides variation along them.
+7. **Relative ranking.** Anomalies are computed on velocity relative to the surrounding 1.5 km, so an asset with near-zero absolute velocity can rank high if its surroundings move. This depends on the neighbourhood radius and may still contain a residual regional ramp.
+8. **Sensitivity.** Across 712 assets the ranking is stable (Spearman 0.79 to 1.00), but the exact top 20 depends on the matching buffer, the neighbourhood radius and the Isolation Forest contamination: 11 to 20 of the top 20 stay the same, and the number flagged ranges from 21 to 45 (37 in the baseline). Use the top of the list as a shortlist, not an exact order. See `outputs/real/sensitivity.csv`.
+9. **Judgment-based score.** The weights (velocity 0.35, anomaly 0.30, importance 0.20, quality 0.15) and the asset-importance values are expert choices, not fitted to failure data.
+10. **Statistical outliers, not damage.** The robust z-score and the Isolation Forest identify unusual movement, not engineering damage. Requiring both reduces single-method false positives but is not ground truth. No supervised model is trained: there are no labelled failure data.
+11. **OpenStreetMap completeness.** OSM coverage, naming and classification are uneven. Missing or misclassified assets will not appear. Unnamed assets are labelled "Unnamed <type>".
+12. **Prioritization, not prediction.** A high score means "inspect sooner". It is not a probability of failure, a remaining life or a diagnosis. A low score does not certify safety.
+13. **Legacy demo path.** `src/pipeline.py` is an older synthetic-data demo. Its outputs must not be presented as measurements. The results above come from `src/real_pipeline.py`.
 
-Operational use requires validated InSAR products, coherence screening, documented reference point, sensitivity analysis, independent comparison with known stable/deforming areas, and field inspection.
+Operational use requires a longer validated time series, comparison against independent reference data and inspection records, and review by qualified engineers.

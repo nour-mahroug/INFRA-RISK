@@ -10,7 +10,7 @@ INFRA-RISK Tunisia is a satellite-based screening and prioritization tool. It me
 1. Sentinel-1 scenes are found with asf_search and processed into interferograms by ASF HyP3 (21 pairs, July 2024 to June 2025).
 2. We stack the unwrapped interferograms into a line-of-sight velocity map (statistics, not AI).
 3. Assets from OpenStreetMap are matched to nearby radar pixels. An asset is ranked only if it has at least 3 pixels.
-4. Two checks flag anomalies relative to the surrounding 1.5 km: a robust z-score and an unsupervised Isolation Forest. High priority only when both agree.
+4. Two checks flag anomalies relative to the surrounding 1.5 km, so a regional trend (atmosphere, orbit) does not dominate: a robust z-score and an unsupervised Isolation Forest. High priority only when both agree.
 5. A transparent weighted score ranks assets: movement, anomaly, importance, data quality.
 
 Result: 30,254 radar points, 2,231 assets found, 712 ranked, 37 high priority.
@@ -22,11 +22,12 @@ Say: "This is real Sentinel-1 data, with preliminary results."
 ## Slide 5 — SDGs and SmartSDG integration (40 sec)
 SDG 9.1 (resilient infrastructure, evidence-based maintenance) and SDG 11.5 (reduce disaster losses), with SDG 13 as a secondary link. Integration is simple: area and dates in, ranked GeoJSON out, ready to display as a layer on SmartSDG.
 
-## Slide 6 — Limits, stated openly (40 sec)
+## Slide 6 — Limits, stated openly (45 sec)
 - Preliminary: only 11 months of data, so seasonal effects can look like movement.
 - Line-of-sight only, not vertical.
 - Pixels are about 80 m apart: matching a pixel to one bridge is indicative.
 - Only 712 of 2,231 assets are assessed. The rest are "insufficient data", never "safe".
+- Rankings are relative to the surrounding 1.5 km. The exact top 20 depends on settings such as that radius: between 11 and 20 of the top 20 stay the same when we vary them. We use the list as a shortlist to inspect, not an exact order.
 - Some clusters (including positive velocities in the southeast) may be atmospheric or orbit effects. We call them anomalous relative movement, cause to be confirmed by inspection.
 - A high score means inspect sooner, not "it will fail".
 

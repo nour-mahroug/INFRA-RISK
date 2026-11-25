@@ -49,6 +49,7 @@ Units: LOS velocity in mm/yr, **positive = toward the satellite**. `metadata` in
 - 503: radar raster missing or OpenStreetMap unavailable.
 
 ## Limits
+- Sensitivity (`outputs/real/sensitivity.csv`): the ranking over all 712 assets is stable (Spearman 0.79 to 1.00), but the exact top 20 depends on the matching buffer, the neighbourhood radius and the Isolation Forest contamination (11 to 20 of the top 20 stay the same), and the number flagged ranges from 21 to 45 (37 in the baseline). Treat the top of the list as a shortlist to inspect, not an exact order.
 - Preliminary: 11 months, so seasonal effects (groundwater, soil moisture, atmosphere) can look like movement.
 - LOS only, not vertical.
 - Re-referencing to the area median assumes most of Greater Tunis is stable; pixels with |v| above 50 mm/yr are masked as likely unwrapping errors.

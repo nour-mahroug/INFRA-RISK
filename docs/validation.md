@@ -1,27 +1,52 @@
 # Validation and quality report
 
-## Hackathon software validation
+## What was verified (software and reproducibility)
 
-The deterministic demo path was executed end-to-end on the repository: raster generation, asset inventory, metric nearest-asset association, anomaly scoring, GeoJSON serialization, and Folium rendering. Automated tests cover robust-Z outlier response, score bounds and rank ordering, and required GeoJSON properties. Run `make test` and `make run-pipeline` to reproduce.
+- 25 automated tests pass (`python -m pytest -q`): anomaly scoring, alert schema, stacking, API behaviour (good bbox, invalid bbox, bbox outside Tunisia, bbox too large, reversed dates, period outside the window, no coverage, OpenStreetMap unavailable, raster missing) and the required fields on every feature of the real alert layer.
+- The real pipeline (`python -m src.real_pipeline`) reruns from the committed raster and reproduces the same counts: 30,254 velocity points, 2,231 assets found, 712 ranked, 37 high priority.
+- Every feature in `outputs/real/alerts.geojson` carries the nine required properties; ranks and asset ids are unique; scores are within 0 to 100.
+- The raster is tagged as Sentinel-1 data and the code refuses to label an untagged raster as real.
+- After re-referencing, the mean velocity over the ranked assets is about 0 mm/yr (-0.06), as expected from the area-median assumption. This checks the processing, not the physics.
 
-## What this does not validate
+## Sensitivity analysis (`outputs/real/sensitivity.csv`)
 
-The demo velocity field is synthetic. Passing software tests does **not** establish that any location in Greater Tunis is subsiding or that an infrastructure asset is moving. No field survey or independently validated real Sentinel-1 time series is bundled with this hackathon artifact.
+Baseline: buffer 60 m, at least 3 pixels, z threshold 2.5, contamination 0.10, neighbourhood 1.5 km (712 assets, 37 flagged).
 
-## Production validation protocol
+| Variant | Assets | Flagged | Top-20 overlap | Spearman |
+|---|---|---|---|---|
+| buffer 80 m | 849 | 42 | 14 | 0.99 |
+| buffer 100 m | 940 | 45 | 11 | 0.98 |
+| min coherence 0.45 / 0.55 | 712 | 37 | 20 / 20 | 1.00 |
+| neighbourhood radius 1000 m | 712 | 34 | 18 | 0.86 |
+| neighbourhood radius 2500 m | 712 | 25 | 11 | 0.79 |
+| robust z threshold 2.0 | 712 | 45 | 18 | 1.00 |
+| robust z threshold 3.0 | 712 | 22 | 18 | 1.00 |
+| isolation contamination 0.05 | 712 | 21 | 12 | 1.00 |
+| isolation contamination 0.15 | 712 | 38 | 20 | 1.00 |
 
-1. Select and document a stable reference point/area; retain the reference coordinates and rationale with the run metadata.
-2. Check HyP3 job completion, acquisition dates, orbit consistency, perpendicular baselines, and product coverage.
-3. Apply coherence filtering and inspect the spatial distribution of valid pixels; mask vegetation/decorrelated areas where appropriate.
-4. Compare nominally stable urban/rocky reference zones against approximately 0 mm/year, allowing for uncertainty and residual atmospheric noise.
-5. Compare known deformation candidates (including published local subsidence/land-reclamation studies) with independent geotechnical or survey evidence.
-6. Run sensitivity checks over robust-Z thresholds (for example 2.0, 2.5, 3.0 MAD), coherence thresholds, and asset buffer distances (30, 40, 50 m). Report rank stability and disagreements.
-7. Have a qualified geotechnical/structural engineer review high-priority candidates before operational action.
+Reading: the overall ranking is stable, but the exact top 20 and the number of flagged assets depend on the buffer, the neighbourhood radius and the contamination. The coherence threshold has no effect because the raster already contains only coherent pixels. The top of the list is therefore a shortlist to inspect, not an exact order.
+
+## What is NOT validated
+
+- There is no comparison with ground truth: no levelling or GNSS survey, no inspection records, no independent processing of the same data.
+- The 11-month window is too short to separate seasonal effects from trends.
+- The spatial pattern has not been verified. Negative velocities (about -8 to -12 mm/yr) cluster in the west and northwest (Sidi Hassine, Séjoumi, Zahrouni) and along the north shore of the Lake of Tunis, which is **consistent with** soft or reclaimed ground, but this is not confirmed. Positive velocities (about +8 to +12 mm/yr) cluster in the southeast (Mégrine, Radès, Ben Arous) and in parts of Ariana and Menzah; uplift of that size in an urban area is unusual and may be a residual atmospheric or orbit ramp. We call these "anomalous relative movement, cause to be confirmed by inspection".
+- The 50 mm/yr outlier threshold and the score weights have not been tested against labelled data.
+
+## Planned validation
+
+1. Compare the negative cluster with published studies on the Lake of Tunis, Sebkhet Séjoumi and reclaimed-land settlement; report what matches and what does not.
+2. Inspect the velocity map for a smooth regional ramp (atmosphere or orbit) and, if present, remove it and rerun.
+3. Check coverage by asset type (`check_coverage.py`) and report which asset classes are rarely assessed.
+4. Extend the time series beyond 11 months and compare seasonal and trend components.
+5. Compare high-priority assets with independent evidence (inspection records, geotechnical or survey data), reviewed by a qualified engineer.
 
 ## Acceptance status
 
-- End-to-end demo workflow: software-validated.
-- GeoJSON required fields and serialization: automated-test validated.
-- Interactive map generation: smoke-tested by pipeline execution.
-- API request/response contract: implemented with Pydantic validation; deployment smoke test should be run in the target environment.
-- Scientific accuracy against real Greater Tunis deformation: **not yet validated**; requires production InSAR and independent reference data.
+| Item | Status |
+|---|---|
+| Real pipeline reproducible from the committed raster | Verified |
+| GeoJSON schema and API contract | Automated-test validated |
+| Map generation | Verified by pipeline run |
+| Sensitivity of ranking to parameters | Reported (above) |
+| Scientific accuracy against real ground motion in Greater Tunis | **Not yet validated** |
